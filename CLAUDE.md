@@ -7,9 +7,11 @@
 
 ## 현재 상태
 
-- `index.html`: 단일 파일 점심 룰렛 프로토타입. 새 앱의 룰렛 디자인과 회전 로직을 여기서 가져다 쓴다.
-- `PRD.md`: 요구사항 초안.
-- 앱 코드는 아직 없다. React 프로젝트를 세팅하면 아래 명령어와 구조를 실제 내용에 맞게 고친다.
+- React + Vite 세팅 완료. `src/App.jsx`는 아직 Supabase 연결 확인 화면이다.
+- `public/roulette.html`: 혼자 쓰는 단일 파일 룰렛 (배포 시 `/roulette.html`). 새 앱의 룰렛 디자인과 회전 로직을 여기서 가져다 쓴다.
+- `supabase/schema.sql`: 테이블(rooms, participants, menus, votes), RLS 정책, Realtime 설정. 바꾸면 Supabase SQL Editor에서 다시 실행해야 한다.
+- 로그인 없이 쓰기 위해 Supabase 익명 로그인(`signInAnonymously`)을 쓴다. 방장 여부는 `rooms.host_id`로 판단한다.
+- 방 링크는 `/?room=<방 id>` 형식으로 만들 예정이다.
 
 ## 기술 스택
 
@@ -17,7 +19,10 @@
 - Supabase: DB, Realtime으로 투표와 룰렛 결과를 실시간 동기화
 - 배포: Vercel, GitHub `Ahlong0204/project4`의 `main` 브랜치
 
-## 명령어 (세팅 후)
+## 명령어
+
+`.env`에 `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`가 있어야 한다 (`.env.example` 참고).
+
 
 - `npm install`: 의존성 설치
 - `npm run dev`: 개발 서버
