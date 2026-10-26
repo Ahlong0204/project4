@@ -12,6 +12,7 @@
       --text: #2b2118;
       --muted: #8a7a6b;
       --card: #ffffff;
+      --line: #eadccf;
       --accent: #ff5a36;
       --accent-dark: #e0441f;
       --ring: #2b2118;
@@ -23,14 +24,13 @@
         --text: #f5ece3;
         --muted: #b3a393;
         --card: #2a221d;
+        --line: #42372f;
         --ring: #f5ece3;
         --shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
       }
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    html, body { height: 100%; }
 
     body {
       background: var(--bg);
@@ -39,9 +39,8 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
       min-height: 100dvh;
-      padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
+      padding: 24px 16px calc(32px + env(safe-area-inset-bottom));
       gap: 24px;
       -webkit-tap-highlight-color: transparent;
       overflow-x: hidden;
@@ -55,6 +54,7 @@
       position: relative;
       width: min(88vw, 440px, 60dvh);
       aspect-ratio: 1;
+      flex-shrink: 0;
     }
 
     .pointer {
@@ -121,7 +121,87 @@
       box-shadow: 0 2px 0 var(--accent-dark), 0 4px 12px rgba(255, 90, 54, 0.35);
     }
     #spin:disabled { opacity: 0.55; cursor: default; }
-    #spin:focus-visible { outline: 3px solid var(--ring); outline-offset: 4px; }
+    button:focus-visible, input:focus-visible { outline: 3px solid var(--ring); outline-offset: 3px; }
+
+    /* 메뉴 후보 편집 */
+    .editor {
+      width: min(100%, 440px);
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      padding: 18px 16px;
+    }
+    .editor-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .editor-head h2 { font-size: 1.05rem; font-weight: 800; }
+    .editor-head span { color: var(--muted); font-size: 0.85rem; }
+
+    .add-form { display: flex; gap: 8px; }
+    .add-form input {
+      flex: 1;
+      min-width: 0;
+      font: inherit;
+      font-size: 1rem; /* iOS 확대 방지 */
+      padding: 10px 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .add-form button, .reset {
+      appearance: none;
+      font: inherit;
+      font-weight: 700;
+      border-radius: 12px;
+      cursor: pointer;
+    }
+    .add-form button {
+      border: none;
+      background: var(--text);
+      color: var(--bg);
+      padding: 10px 18px;
+    }
+    .hint { min-height: 1.2em; margin-top: 6px; font-size: 0.85rem; color: var(--accent); }
+
+    .chips { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .chips li {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 6px 6px 12px;
+      border-radius: 999px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #2b2118;
+    }
+    .chips button {
+      appearance: none;
+      border: none;
+      background: rgba(0, 0, 0, 0.08);
+      color: inherit;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 0.8rem;
+      line-height: 1;
+    }
+    .chips button:disabled { opacity: 0.3; cursor: default; }
+
+    .reset {
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--muted);
+      padding: 8px 14px;
+      font-size: 0.85rem;
+    }
+
+    .editor.locked { opacity: 0.6; pointer-events: none; }
 
     /* 결과 오버레이 */
     .overlay {
@@ -143,7 +223,7 @@
     .result {
       background: var(--card);
       border-radius: 28px;
-      padding: 36px 28px 28px;
+      padding: 36px 24px 24px;
       width: min(100%, 380px);
       text-align: center;
       box-shadow: var(--shadow);
@@ -161,18 +241,21 @@
       color: var(--accent);
       margin: 4px 0 24px;
       word-break: keep-all;
+      overflow-wrap: anywhere;
     }
-    .result button {
+    .result-actions { display: flex; flex-direction: column; gap: 10px; }
+    .result-actions button {
       appearance: none;
-      border: 2px solid var(--ring);
-      background: transparent;
-      color: var(--text);
+      font: inherit;
       font-size: 1rem;
       font-weight: 700;
-      padding: 12px 32px;
+      padding: 13px 24px;
       border-radius: 999px;
       cursor: pointer;
     }
+    #copy { border: none; background: var(--accent); color: #fff; }
+    #again { border: 2px solid var(--ring); background: transparent; color: var(--text); }
+    .copied { min-height: 1.2em; margin-top: 10px; font-size: 0.9rem; color: var(--muted); }
   </style>
 </head>
 <body>
@@ -189,17 +272,35 @@
 
   <button id="spin" type="button">돌리기</button>
 
+  <section class="editor" id="editor" aria-labelledby="editor-title">
+    <div class="editor-head">
+      <h2 id="editor-title">메뉴 후보</h2>
+      <span id="count"></span>
+    </div>
+    <form class="add-form" id="add-form">
+      <input id="menu-input" type="text" maxlength="10" placeholder="메뉴 이름 (예: 마라탕)" autocomplete="off" aria-label="추가할 메뉴 이름" />
+      <button type="submit">추가</button>
+    </form>
+    <p class="hint" id="hint" role="status"></p>
+    <ul class="chips" id="chips"></ul>
+    <button type="button" class="reset" id="reset">기본 메뉴 10개로 되돌리기</button>
+  </section>
+
   <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="result-name">
     <div class="result">
       <div class="label">오늘의 점심은</div>
       <div class="emoji" id="result-emoji"></div>
       <div class="name" id="result-name"></div>
-      <button type="button" id="close">다시 돌리기</button>
+      <div class="result-actions">
+        <button type="button" id="copy">결과 복사</button>
+        <button type="button" id="again">다시 돌리기</button>
+      </div>
+      <p class="copied" id="copied" role="status"></p>
     </div>
   </div>
 
   <script>
-    const MENUS = [
+    const DEFAULT_MENUS = [
       { name: "김치찌개", emoji: "🍲" },
       { name: "된장찌개", emoji: "🥘" },
       { name: "비빔밥",   emoji: "🍚" },
@@ -214,15 +315,44 @@
     const COLORS = [
       "#ffb4a2", "#ffd6a5", "#fdffb6", "#caffbf", "#9bf6ff",
       "#a0c4ff", "#bdb2ff", "#ffc6ff", "#ffadad", "#d0f4de",
+      "#fbe0c3", "#c8e7ff",
     ];
+    const MIN_MENUS = 2;
+    const MAX_MENUS = 12;
     const SPIN_MS = 3000;
-    const SEG = 360 / MENUS.length;
     const R = 98;
+    const STORAGE_KEY = "lunch-roulette-menus";
+    const NS = "http://www.w3.org/2000/svg";
 
     const wheel = document.getElementById("wheel");
     const spinBtn = document.getElementById("spin");
+    const editor = document.getElementById("editor");
+    const addForm = document.getElementById("add-form");
+    const menuInput = document.getElementById("menu-input");
+    const hint = document.getElementById("hint");
+    const chips = document.getElementById("chips");
+    const count = document.getElementById("count");
     const overlay = document.getElementById("overlay");
-    const closeBtn = document.getElementById("close");
+    const copyBtn = document.getElementById("copy");
+    const againBtn = document.getElementById("again");
+    const copied = document.getElementById("copied");
+
+    // 브라우저 저장소는 막혀 있을 수 있으므로 실패하면 기본 메뉴로 동작
+    function loadMenus() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        if (Array.isArray(saved) && saved.length >= MIN_MENUS) return saved;
+      } catch (e) {}
+      return DEFAULT_MENUS.map((m) => ({ ...m }));
+    }
+    function saveMenus() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(menus)); } catch (e) {}
+    }
+
+    let menus = loadMenus();
+    let rotation = 0;
+    let spinning = false;
+    let current = null;
 
     // 각도는 12시 방향에서 시계 방향으로 측정
     const point = (deg, r) => {
@@ -230,53 +360,99 @@
       return [r * Math.sin(rad), -r * Math.cos(rad)];
     };
 
-    const NS = "http://www.w3.org/2000/svg";
-    MENUS.forEach((menu, i) => {
-      const a0 = i * SEG;
-      const a1 = a0 + SEG;
-      const [x0, y0] = point(a0, R);
-      const [x1, y1] = point(a1, R);
+    function renderWheel() {
+      wheel.replaceChildren();
+      const seg = 360 / menus.length;
+      // 칸이 많아질수록 글자를 조금씩 줄임
+      const fontSize = menus.length <= 8 ? 11.5 : menus.length <= 10 ? 10.5 : 9.5;
 
-      const path = document.createElementNS(NS, "path");
-      path.setAttribute("d", `M0 0 L${x0} ${y0} A${R} ${R} 0 0 1 ${x1} ${y1} Z`);
-      path.setAttribute("fill", COLORS[i % COLORS.length]);
-      path.setAttribute("stroke", "#fff");
-      path.setAttribute("stroke-width", "1.2");
-      wheel.appendChild(path);
+      menus.forEach((menu, i) => {
+        const a0 = i * seg;
+        const [x0, y0] = point(a0, R);
+        const [x1, y1] = point(a0 + seg, R);
 
-      // 글자는 바깥쪽에서 중심 방향으로 배치
-      const g = document.createElementNS(NS, "g");
-      g.setAttribute("transform", `rotate(${a0 + SEG / 2 - 90})`);
-      const text = document.createElementNS(NS, "text");
-      text.setAttribute("x", "88");
-      text.setAttribute("y", "0");
-      text.setAttribute("text-anchor", "end");
-      text.setAttribute("dominant-baseline", "central");
-      text.setAttribute("font-size", "10.5");
-      text.textContent = `${menu.name} ${menu.emoji}`;
-      g.appendChild(text);
-      wheel.appendChild(g);
-    });
+        const path = document.createElementNS(NS, "path");
+        path.setAttribute("d", `M0 0 L${x0} ${y0} A${R} ${R} 0 0 1 ${x1} ${y1} Z`);
+        path.setAttribute("fill", COLORS[i % COLORS.length]);
+        path.setAttribute("stroke", "#fff");
+        path.setAttribute("stroke-width", "1.2");
+        wheel.appendChild(path);
 
-    const rim = document.createElementNS(NS, "circle");
-    rim.setAttribute("r", R);
-    rim.setAttribute("fill", "none");
-    rim.setAttribute("stroke", "#2b2118");
-    rim.setAttribute("stroke-width", "3");
-    wheel.appendChild(rim);
+        // 글자는 바깥쪽에서 중심 방향으로 배치
+        const g = document.createElementNS(NS, "g");
+        g.setAttribute("transform", `rotate(${a0 + seg / 2 - 90})`);
+        const text = document.createElementNS(NS, "text");
+        text.setAttribute("x", "88");
+        text.setAttribute("text-anchor", "end");
+        text.setAttribute("dominant-baseline", "central");
+        text.setAttribute("font-size", fontSize);
+        const label = menu.name.length > 6 ? menu.name.slice(0, 5) + "…" : menu.name;
+        text.textContent = `${label} ${menu.emoji}`;
+        g.appendChild(text);
+        wheel.appendChild(g);
+      });
 
-    let rotation = 0;
-    let spinning = false;
+      const rim = document.createElementNS(NS, "circle");
+      rim.setAttribute("r", R);
+      rim.setAttribute("fill", "none");
+      rim.setAttribute("stroke", "#2b2118");
+      rim.setAttribute("stroke-width", "3");
+      wheel.appendChild(rim);
+    }
+
+    function renderChips() {
+      chips.replaceChildren();
+      menus.forEach((menu, i) => {
+        const li = document.createElement("li");
+        li.style.background = COLORS[i % COLORS.length];
+        li.append(`${menu.emoji} ${menu.name}`);
+        const del = document.createElement("button");
+        del.type = "button";
+        del.textContent = "✕";
+        del.setAttribute("aria-label", `${menu.name} 삭제`);
+        del.disabled = menus.length <= MIN_MENUS;
+        del.addEventListener("click", () => removeMenu(i));
+        li.appendChild(del);
+        chips.appendChild(li);
+      });
+      count.textContent = `${menus.length}개 (최대 ${MAX_MENUS}개)`;
+    }
+
+    function render() {
+      renderWheel();
+      renderChips();
+      saveMenus();
+    }
+
+    function addMenu(name) {
+      name = name.trim();
+      if (!name) return (hint.textContent = "메뉴 이름을 입력해 주세요.");
+      if (menus.length >= MAX_MENUS) return (hint.textContent = `메뉴는 최대 ${MAX_MENUS}개까지 넣을 수 있어요.`);
+      if (menus.some((m) => m.name === name)) return (hint.textContent = "이미 있는 메뉴예요.");
+      menus.push({ name, emoji: "🍽️" });
+      hint.textContent = "";
+      menuInput.value = "";
+      render();
+    }
+
+    function removeMenu(i) {
+      if (menus.length <= MIN_MENUS) return;
+      menus.splice(i, 1);
+      hint.textContent = "";
+      render();
+    }
 
     function spin() {
       if (spinning) return;
       spinning = true;
       spinBtn.disabled = true;
+      editor.classList.add("locked");
 
-      const index = Math.floor(Math.random() * MENUS.length);
+      const seg = 360 / menus.length;
+      const index = Math.floor(Math.random() * menus.length);
       // 칸 경계에 걸리지 않도록 칸 안쪽 80% 범위에서 랜덤 위치
-      const offset = (Math.random() - 0.5) * SEG * 0.8;
-      const targetAngle = index * SEG + SEG / 2 + offset;
+      const offset = (Math.random() - 0.5) * seg * 0.8;
+      const targetAngle = index * seg + seg / 2 + offset;
       const finalMod = (360 - targetAngle) % 360;
       const currentMod = ((rotation % 360) + 360) % 360;
       const extraTurns = 360 * (5 + Math.floor(Math.random() * 3));
@@ -284,29 +460,61 @@
       rotation += extraTurns + ((finalMod - currentMod + 360) % 360);
       wheel.style.transform = `rotate(${rotation}deg)`;
 
-      setTimeout(() => showResult(MENUS[index]), SPIN_MS + 150);
+      setTimeout(() => showResult(menus[index]), SPIN_MS + 150);
     }
 
     function showResult(menu) {
+      current = menu;
       document.getElementById("result-emoji").textContent = menu.emoji;
       document.getElementById("result-name").textContent = menu.name;
+      copied.textContent = "";
       overlay.classList.add("show");
-      closeBtn.focus();
+      copyBtn.focus();
     }
 
     function closeResult() {
       overlay.classList.remove("show");
       spinning = false;
       spinBtn.disabled = false;
+      editor.classList.remove("locked");
       spinBtn.focus();
     }
 
+    // 메신저에 붙여넣기 좋은 문구로 복사
+    async function copyResult() {
+      const text = `🍱 오늘 점심은 ${current.emoji} ${current.name}!\n(점심 메뉴 룰렛으로 정했어요)`;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (e) {
+        // clipboard API를 못 쓰는 환경(일부 인앱 브라우저 등)용 대체 방법
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand("copy");
+        ta.remove();
+        if (!ok) return (copied.textContent = "복사하지 못했어요. 직접 입력해 주세요.");
+      }
+      copied.textContent = "복사됐어요! 메신저에 붙여넣으세요.";
+    }
+
     spinBtn.addEventListener("click", spin);
-    closeBtn.addEventListener("click", () => { closeResult(); setTimeout(spin, 250); });
+    addForm.addEventListener("submit", (e) => { e.preventDefault(); addMenu(menuInput.value); });
+    document.getElementById("reset").addEventListener("click", () => {
+      menus = DEFAULT_MENUS.map((m) => ({ ...m }));
+      hint.textContent = "";
+      render();
+    });
+    copyBtn.addEventListener("click", copyResult);
+    againBtn.addEventListener("click", () => { closeResult(); setTimeout(spin, 250); });
     overlay.addEventListener("click", (e) => { if (e.target === overlay) closeResult(); });
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && overlay.classList.contains("show")) closeResult();
     });
+
+    render();
   </script>
 </body>
 </html>
