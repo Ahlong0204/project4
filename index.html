@@ -1,17 +1,312 @@
 <!doctype html>
 <html lang="ko">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f5f7fb" />
-    <meta
-      name="description"
-      content="부서 공용물품 대여와 반납을 관리하는 장부"
-    />
-    <title>공용물품 대여 장부</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>점심 메뉴 룰렛</title>
+  <meta name="description" content="오늘 점심 뭐 먹지? 룰렛을 돌려서 정해보세요." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍱</text></svg>" />
+  <style>
+    :root {
+      --bg: #fff8f0;
+      --text: #2b2118;
+      --muted: #8a7a6b;
+      --card: #ffffff;
+      --accent: #ff5a36;
+      --accent-dark: #e0441f;
+      --ring: #2b2118;
+      --shadow: 0 12px 40px rgba(80, 40, 10, 0.18);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1512;
+        --text: #f5ece3;
+        --muted: #b3a393;
+        --card: #2a221d;
+        --ring: #f5ece3;
+        --shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+      }
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body { height: 100%; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100dvh;
+      padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
+      gap: 24px;
+      -webkit-tap-highlight-color: transparent;
+      overflow-x: hidden;
+    }
+
+    header { text-align: center; }
+    h1 { font-size: clamp(1.6rem, 6vw, 2.2rem); font-weight: 800; letter-spacing: -0.02em; }
+    header p { color: var(--muted); margin-top: 6px; font-size: 0.95rem; }
+
+    .wheel-wrap {
+      position: relative;
+      width: min(88vw, 440px, 60dvh);
+      aspect-ratio: 1;
+    }
+
+    .pointer {
+      position: absolute;
+      top: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 16px solid transparent;
+      border-right: 16px solid transparent;
+      border-top: 30px solid var(--accent);
+      filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.3));
+      z-index: 2;
+    }
+
+    #wheel {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      box-shadow: var(--shadow);
+      transform: rotate(0deg);
+      transition: transform 3s cubic-bezier(0.17, 0.67, 0.12, 1);
+      display: block;
+    }
+
+    #wheel text {
+      font-weight: 700;
+      fill: #2b2118;
+      pointer-events: none;
+    }
+
+    .hub {
+      position: absolute;
+      inset: 50% auto auto 50%;
+      width: 16%;
+      aspect-ratio: 1;
+      transform: translate(-50%, -50%);
+      background: var(--card);
+      border: 4px solid var(--ring);
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: clamp(1.2rem, 5vw, 1.8rem);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    }
+
+    #spin {
+      appearance: none;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      font-size: 1.25rem;
+      font-weight: 800;
+      padding: 16px 56px;
+      border-radius: 999px;
+      cursor: pointer;
+      box-shadow: 0 6px 0 var(--accent-dark), 0 10px 24px rgba(255, 90, 54, 0.35);
+      transition: transform 0.1s, box-shadow 0.1s, opacity 0.2s;
+      min-width: 200px;
+    }
+    #spin:active:not(:disabled) {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 var(--accent-dark), 0 4px 12px rgba(255, 90, 54, 0.35);
+    }
+    #spin:disabled { opacity: 0.55; cursor: default; }
+    #spin:focus-visible { outline: 3px solid var(--ring); outline-offset: 4px; }
+
+    /* 결과 오버레이 */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(20, 12, 6, 0.6);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: grid;
+      place-items: center;
+      padding: 16px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+      z-index: 10;
+    }
+    .overlay.show { opacity: 1; pointer-events: auto; }
+
+    .result {
+      background: var(--card);
+      border-radius: 28px;
+      padding: 36px 28px 28px;
+      width: min(100%, 380px);
+      text-align: center;
+      box-shadow: var(--shadow);
+      transform: scale(0.7);
+      transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .overlay.show .result { transform: scale(1); }
+
+    .result .label { color: var(--muted); font-weight: 600; font-size: 1rem; }
+    .result .emoji { font-size: clamp(4rem, 22vw, 6rem); line-height: 1.2; margin-top: 12px; }
+    .result .name {
+      font-size: clamp(2.4rem, 12vw, 3.4rem);
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      color: var(--accent);
+      margin: 4px 0 24px;
+      word-break: keep-all;
+    }
+    .result button {
+      appearance: none;
+      border: 2px solid var(--ring);
+      background: transparent;
+      color: var(--text);
+      font-size: 1rem;
+      font-weight: 700;
+      padding: 12px 32px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🍽️ 오늘 점심 뭐 먹지?</h1>
+    <p>고민은 룰렛에게 맡기세요</p>
+  </header>
+
+  <div class="wheel-wrap">
+    <div class="pointer" aria-hidden="true"></div>
+    <svg id="wheel" viewBox="-100 -100 200 200" role="img" aria-label="점심 메뉴 룰렛"></svg>
+    <div class="hub" aria-hidden="true">🍴</div>
+  </div>
+
+  <button id="spin" type="button">돌리기</button>
+
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="result-name">
+    <div class="result">
+      <div class="label">오늘의 점심은</div>
+      <div class="emoji" id="result-emoji"></div>
+      <div class="name" id="result-name"></div>
+      <button type="button" id="close">다시 돌리기</button>
+    </div>
+  </div>
+
+  <script>
+    const MENUS = [
+      { name: "김치찌개", emoji: "🍲" },
+      { name: "된장찌개", emoji: "🥘" },
+      { name: "비빔밥",   emoji: "🍚" },
+      { name: "제육볶음", emoji: "🥓" },
+      { name: "돈가스",   emoji: "🍖" },
+      { name: "짜장면",   emoji: "🍜" },
+      { name: "짬뽕",     emoji: "🌶️" },
+      { name: "초밥",     emoji: "🍣" },
+      { name: "쌀국수",   emoji: "🍜" },
+      { name: "햄버거",   emoji: "🍔" },
+    ];
+    const COLORS = [
+      "#ffb4a2", "#ffd6a5", "#fdffb6", "#caffbf", "#9bf6ff",
+      "#a0c4ff", "#bdb2ff", "#ffc6ff", "#ffadad", "#d0f4de",
+    ];
+    const SPIN_MS = 3000;
+    const SEG = 360 / MENUS.length;
+    const R = 98;
+
+    const wheel = document.getElementById("wheel");
+    const spinBtn = document.getElementById("spin");
+    const overlay = document.getElementById("overlay");
+    const closeBtn = document.getElementById("close");
+
+    // 각도는 12시 방향에서 시계 방향으로 측정
+    const point = (deg, r) => {
+      const rad = (deg * Math.PI) / 180;
+      return [r * Math.sin(rad), -r * Math.cos(rad)];
+    };
+
+    const NS = "http://www.w3.org/2000/svg";
+    MENUS.forEach((menu, i) => {
+      const a0 = i * SEG;
+      const a1 = a0 + SEG;
+      const [x0, y0] = point(a0, R);
+      const [x1, y1] = point(a1, R);
+
+      const path = document.createElementNS(NS, "path");
+      path.setAttribute("d", `M0 0 L${x0} ${y0} A${R} ${R} 0 0 1 ${x1} ${y1} Z`);
+      path.setAttribute("fill", COLORS[i % COLORS.length]);
+      path.setAttribute("stroke", "#fff");
+      path.setAttribute("stroke-width", "1.2");
+      wheel.appendChild(path);
+
+      // 글자는 바깥쪽에서 중심 방향으로 배치
+      const g = document.createElementNS(NS, "g");
+      g.setAttribute("transform", `rotate(${a0 + SEG / 2 - 90})`);
+      const text = document.createElementNS(NS, "text");
+      text.setAttribute("x", "88");
+      text.setAttribute("y", "0");
+      text.setAttribute("text-anchor", "end");
+      text.setAttribute("dominant-baseline", "central");
+      text.setAttribute("font-size", "10.5");
+      text.textContent = `${menu.name} ${menu.emoji}`;
+      g.appendChild(text);
+      wheel.appendChild(g);
+    });
+
+    const rim = document.createElementNS(NS, "circle");
+    rim.setAttribute("r", R);
+    rim.setAttribute("fill", "none");
+    rim.setAttribute("stroke", "#2b2118");
+    rim.setAttribute("stroke-width", "3");
+    wheel.appendChild(rim);
+
+    let rotation = 0;
+    let spinning = false;
+
+    function spin() {
+      if (spinning) return;
+      spinning = true;
+      spinBtn.disabled = true;
+
+      const index = Math.floor(Math.random() * MENUS.length);
+      // 칸 경계에 걸리지 않도록 칸 안쪽 80% 범위에서 랜덤 위치
+      const offset = (Math.random() - 0.5) * SEG * 0.8;
+      const targetAngle = index * SEG + SEG / 2 + offset;
+      const finalMod = (360 - targetAngle) % 360;
+      const currentMod = ((rotation % 360) + 360) % 360;
+      const extraTurns = 360 * (5 + Math.floor(Math.random() * 3));
+
+      rotation += extraTurns + ((finalMod - currentMod + 360) % 360);
+      wheel.style.transform = `rotate(${rotation}deg)`;
+
+      setTimeout(() => showResult(MENUS[index]), SPIN_MS + 150);
+    }
+
+    function showResult(menu) {
+      document.getElementById("result-emoji").textContent = menu.emoji;
+      document.getElementById("result-name").textContent = menu.name;
+      overlay.classList.add("show");
+      closeBtn.focus();
+    }
+
+    function closeResult() {
+      overlay.classList.remove("show");
+      spinning = false;
+      spinBtn.disabled = false;
+      spinBtn.focus();
+    }
+
+    spinBtn.addEventListener("click", spin);
+    closeBtn.addEventListener("click", () => { closeResult(); setTimeout(spin, 250); });
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) closeResult(); });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && overlay.classList.contains("show")) closeResult();
+    });
+  </script>
+</body>
 </html>
