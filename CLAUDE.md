@@ -7,11 +7,13 @@
 
 ## 현재 상태
 
-- React + Vite 세팅 완료. `src/App.jsx`는 아직 Supabase 연결 확인 화면이다.
+- PRD [필수] 기능 구현 완료: `src/pages/Home.jsx`(방 만들기), `src/pages/Room.jsx`(입장, 후보, 투표, 룰렛, 결과), `src/components/Wheel.jsx`, `src/lib/roulette.js`(득표 비례 칸 계산).
+- 룰렛 동기화: 방장이 `rooms`에 결과 메뉴와 `spin_angle`(결과 칸 안 0~1 위치)을 기록하면, 각 참여자 화면이 Realtime으로 받아 같은 메뉴에서 멈추게 회전한다.
+- 결정 후 투표/후보 추가 잠금은 화면에서만 막고 있다 (DB 정책으로는 막지 않음).
 - `public/roulette.html`: 혼자 쓰는 단일 파일 룰렛 (배포 시 `/roulette.html`). 새 앱의 룰렛 디자인과 회전 로직을 여기서 가져다 쓴다.
 - `supabase/schema.sql`: 테이블(rooms, participants, menus, votes), RLS 정책, Realtime 설정. 바꾸면 Supabase SQL Editor에서 다시 실행해야 한다.
 - 로그인 없이 쓰기 위해 Supabase 익명 로그인(`signInAnonymously`)을 쓴다. 방장 여부는 `rooms.host_id`로 판단한다.
-- 방 링크는 `/?room=<방 id>` 형식으로 만들 예정이다.
+- 방 링크는 `/?room=<방 id>` 형식이다.
 
 ## 기술 스택
 

@@ -19,7 +19,7 @@ create table public.rooms (
   expires_at timestamptz not null default public.next_midnight_kst(),
   -- 룰렛 결과: 방장이 돌리면 채워지고, 모든 참여자가 같은 결과를 본다
   result_menu_id uuid,
-  spin_angle double precision, -- 결과 칸 안에서 멈출 위치(도). 모두의 화면에서 같은 위치에 멈추게 한다
+  spin_angle double precision, -- 결과 칸 안에서 멈출 위치(0~1 비율). 모두의 화면에서 같은 메뉴에 멈추게 한다
   spun_at timestamptz
 );
 
